@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>DealerOS Reconciliation</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f6f8;
+            color: #1f2937;
+        }
+
+        .header {
+            background: #111827;
+            color: white;
+            padding: 18px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 22px;
+        }
+
+        .header span {
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 35px auto;
+            padding: 0 20px;
+        }
+
+        .title {
+            margin-bottom: 25px;
+        }
+
+        .title h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .title p {
+            color: #6b7280;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 18px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .card-title {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .card-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .table-container {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .table-header h3 {
+            font-size: 18px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .controls label {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .controls select {
+            padding: 8px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            color: #1f2937;
+            cursor: pointer;
+        }
+
+        .refresh {
+            border: none;
+            background: #2563eb;
+            color: white;
+            padding: 9px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .refresh:hover {
+            background: #1d4ed8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: #f9fafb;
+            font-size: 13px;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+
+        td {
+            font-size: 14px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .mismatch {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .missing {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .orphan {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .duplicate {
+            background: #ede9fe;
+            color: #5b21b6;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #6b7280;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 30px;
+            color: #6b7280;
+        }
+
+        @media (max-width: 1100px) {
+            .cards {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .table-header {
+                align-items: flex-start;
+            }
+
+            .controls {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="header">
+        <h1>DealerOS</h1>
+        <span>Reconciliation System</span>
+    </header>
+
+    <main class="container">
+
+        <section class="title">
+            <h2>Reconciliation Dashboard</h2>
+            <p>Compare System A and System B records.</p>
+        </section>
+
+        <div id="error" class="error"></div>
+
+        <section class="cards">
+
+            <div class="card">
+                <div class="card-title">
+                    Total Disagreements
+                </div>
+
+                <div id="total" class="card-value">
+                    —
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    Missing in B
+                </div>
+
+                <div id="missing" class="card-value">
+                    —
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    Orphan B
+                </div>
+
+                <div id="orphan" class="card-value">
+                    —
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    Duplicate B
+                </div>
+
+                <div id="duplicate-count" class="card-value">
+                    —
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    Value Mismatch
+                </div>
+
+                <div id="mismatch-count" class="card-value">
+                    —
+                </div>
+            </div>
+
+        </section>
+
+        <section class="table-container">
+
+            <div class="table-header">
+
+                <h3>Disagreements</h3>
+
+                <div class="controls">
+
+                    <label for="reason-filter">
+                        Filter:
+                    </label>
+
+                    <select id="reason-filter" onchange="applyFilters()">
+                        <option value="all">
+                            All reasons
+                        </option>
+
+                        <option value="missing_in_b">
+                            Missing in B
+                        </option>
+
+                        <option value="orphan_b">
+                            Orphan B
+                        </option>
+
+                        <option value="duplicate_b">
+                            Duplicate B
+                        </option>
+
+                        <option value="value_mismatch">
+                            Value mismatch
+                        </option>
+                    </select>
+
+                    <label for="value-sort">
+                        Sort:
+                    </label>
+
+                    <select id="value-sort" onchange="applyFilters()">
+                        <option value="none">
+                            Default
+                        </option>
+
+                        <option value="desc">
+                            Value: High to Low
+                        </option>
+
+                        <option value="asc">
+                            Value: Low to High
+                        </option>
+                    </select>
+
+                    <button
+                        class="refresh"
+                        onclick="loadData()">
+                        Refresh
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div id="table-loading" class="loading">
+                Loading reconciliation results...
+            </div>
+
+            <table id="disagreement-table" style="display:none;">
+
+                <thead>
+                    <tr>
+                        <th>Record</th>
+                        <th>Reason</th>
+                        <th>System A</th>
+                        <th>System B</th>
+                        <th>Location</th>
+                    </tr>
+                </thead>
+
+                <tbody id="table-body">
+                </tbody>
+
+            </table>
+
+            <div
+                id="no-results"
+                class="no-results"
+                style="display:none;">
+                No disagreements match the selected filter.
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+
+        let allDisagreements = [];
+
+
+        async function loadData() {
+
+            const loading =
+                document.getElementById("table-loading");
+
+            const table =
+                document.getElementById("disagreement-table");
+
+            const noResults =
+                document.getElementById("no-results");
+
+            const error =
+                document.getElementById("error");
+
+            error.style.display = "none";
+
+            loading.style.display = "block";
+            table.style.display = "none";
+            noResults.style.display = "none";
+
+
+            try {
+
+                const summaryResponse =
+                    await fetch("/api/summary/");
+
+                if (!summaryResponse.ok) {
+                    throw new Error("Summary request failed.");
+                }
+
+                const summary =
+                    await summaryResponse.json();
+
+
+                document.getElementById("total")
+                    .textContent = summary.total;
+
+                document.getElementById("missing")
+                    .textContent = summary.missing_in_b;
+
+                document.getElementById("orphan")
+                    .textContent = summary.orphan_b;
+
+                document.getElementById("duplicate-count")
+                    .textContent = summary.duplicate_b;
+
+                document.getElementById("mismatch-count")
+                    .textContent = summary.value_mismatch;
+
+
+                const response =
+                    await fetch("/api/disagreements/");
+
+                if (!response.ok) {
+                    throw new Error("Disagreements request failed.");
+                }
+
+                const data =
+                    await response.json();
+
+
+                allDisagreements = data.results || [];
+
+                applyFilters();
+
+            } catch (err) {
+
+                loading.style.display = "none";
+
+                table.style.display = "none";
+
+                noResults.style.display = "none";
+
+                error.textContent =
+                    "Unable to load reconciliation data.";
+
+                error.style.display = "block";
+
+            }
+        }
+
+
+        function applyFilters() {
+
+            const filter =
+                document.getElementById("reason-filter").value;
+
+            const sort =
+                document.getElementById("value-sort").value;
+
+            const table =
+                document.getElementById("disagreement-table");
+
+            const body =
+                document.getElementById("table-body");
+
+            const loading =
+                document.getElementById("table-loading");
+
+            const noResults =
+                document.getElementById("no-results");
+
+
+            let filtered =
+                [...allDisagreements];
+
+
+            /*
+             * Filter by disagreement reason.
+             */
+            if (filter !== "all") {
+
+                filtered =
+                    filtered.filter(
+                        item => item.reason === filter
+                    );
+
+            }
+
+
+            /*
+             * Sort by value.
+             *
+             * System A is used when available.
+             * For orphan B records, System B is used.
+             */
+            if (sort !== "none") {
+
+                filtered.sort((a, b) => {
+
+                    const valueA =
+                        getSortValue(a);
+
+                    const valueB =
+                        getSortValue(b);
+
+
+                    if (sort === "asc") {
+                        return valueA - valueB;
+                    }
+
+                    return valueB - valueA;
+
+                });
+
+            }
+
+
+            body.innerHTML = "";
+
+
+            if (filtered.length === 0) {
+
+                loading.style.display = "none";
+
+                table.style.display = "none";
+
+                noResults.style.display = "block";
+
+                return;
+
+            }
+
+
+            filtered.forEach(item => {
+
+                const row =
+                    document.createElement("tr");
+
+
+                const reasonLabel =
+                    item.reason
+                        .replaceAll("_", " ");
+
+
+                let badgeClass =
+                    "mismatch";
+
+
+                if (item.reason === "missing_in_b") {
+                    badgeClass = "missing";
+                }
+
+
+                if (item.reason === "orphan_b") {
+                    badgeClass = "orphan";
+                }
+
+
+                if (item.reason === "duplicate_b") {
+                    badgeClass = "duplicate";
+                }
+
+
+                row.innerHTML = `
+                    <td>
+                        <strong>
+                            ${item.record_ref}
+                        </strong>
+                    </td>
+
+                    <td>
+                        <span class="badge ${badgeClass}">
+                            ${reasonLabel}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${formatValue(item.system_a_value)}
+                    </td>
+
+                    <td>
+                        ${formatValue(item.system_b_value)}
+                    </td>
+
+                    <td>
+                        ${item.location_id || "—"}
+                    </td>
+                `;
+
+
+                body.appendChild(row);
+
+            });
+
+
+            loading.style.display = "none";
+
+            noResults.style.display = "none";
+
+            table.style.display = "table";
+
+        }
+
+
+        function getSortValue(item) {
+
+            if (
+                item.system_a_value !== null &&
+                item.system_a_value !== undefined
+            ) {
+                return Number(item.system_a_value);
+            }
+
+
+            if (
+                item.system_b_value !== null &&
+                item.system_b_value !== undefined
+            ) {
+                return Number(item.system_b_value);
+            }
+
+
+            return 0;
+
+        }
+
+
+        function formatValue(value) {
+
+            if (value === null || value === undefined) {
+                return "—";
+            }
+
+
+            return Number(value).toLocaleString(
+                "en-IN",
+                {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }
+            );
+
+        }
+
+
+        loadData();
+
+    </script>
+
+</body>
+
+</html>
