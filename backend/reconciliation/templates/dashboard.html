@@ -319,6 +319,20 @@
 
                 <div class="controls">
 
+                    <label for="org-filter">
+                        Organization:
+                    </label>
+
+                    <select id="org-filter" onchange="loadData()">
+                        <option value="ORG-A">
+                            ORG-A
+                        </option>
+
+                        <option value="ORG-B">
+                            ORG-B
+                        </option>
+                    </select>
+
                     <label for="reason-filter">
                         Filter:
                     </label>
@@ -424,6 +438,10 @@
             const error =
                 document.getElementById("error");
 
+            const orgId =
+                document.getElementById("org-filter").value;
+
+
             error.style.display = "none";
 
             loading.style.display = "block";
@@ -433,12 +451,21 @@
 
             try {
 
+                /*
+                 * Request summary only for the selected organization.
+                 */
                 const summaryResponse =
-                    await fetch("/api/summary/");
+                    await fetch(
+                        `/api/summary/?org_id=${encodeURIComponent(orgId)}`
+                    );
+
 
                 if (!summaryResponse.ok) {
-                    throw new Error("Summary request failed.");
+                    throw new Error(
+                        "Summary request failed."
+                    );
                 }
+
 
                 const summary =
                     await summaryResponse.json();
@@ -460,18 +487,29 @@
                     .textContent = summary.value_mismatch;
 
 
+                /*
+                 * Request disagreements only for the selected organization.
+                 */
                 const response =
-                    await fetch("/api/disagreements/");
+                    await fetch(
+                        `/api/disagreements/?org_id=${encodeURIComponent(orgId)}`
+                    );
+
 
                 if (!response.ok) {
-                    throw new Error("Disagreements request failed.");
+                    throw new Error(
+                        "Disagreements request failed."
+                    );
                 }
+
 
                 const data =
                     await response.json();
 
 
-                allDisagreements = data.results || [];
+                allDisagreements =
+                    data.results || [];
+
 
                 applyFilters();
 
@@ -531,10 +569,10 @@
 
 
             /*
-             * Sort by value.
+             * Sort by reconciliation value.
              *
-             * System A is used when available.
-             * For orphan B records, System B is used.
+             * System A value is used when available.
+             * For orphan B records, System B value is used.
              */
             if (sort !== "none") {
 
